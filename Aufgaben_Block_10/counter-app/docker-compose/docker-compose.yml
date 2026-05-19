@@ -1,0 +1,78 @@
+# Docker Compose Configuration File
+# This file defines and configures the services, networks, and volumes required for the application.
+
+services:
+
+  # Database service configuration
+  counter-database:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}             # The name of the PostgreSQL database to be created
+      POSTGRES_USER: ${POSTGRES_USER}         # The username for accessing the PostgreSQL database
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD} # The password for the PostgreSQL database user
+    ports:
+      - "5432:5432"                           # Expose PostgreSQL on port 5432
+    volumes:
+      - counter-database-data:/var/lib/postgresql/data  # Persistent storage for PostgreSQL data
+    networks:
+      - counter-app                           # Connect to the 'counter-app' network
+
+  # PgAdmin service configuration
+  pgadmin:
+    image: ghcr.io/modul-i-ch-109/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}    # Default email address for PgAdmin login
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}  # Default password for PgAdmin login
+    ports:
+      - "5050:5050"                           # Expose PgAdmin on port 5050
+    volumes:
+      - counter-pgadmin-data:/pgadmin          # Persistent storage for PgAdmin data
+    depends_on:
+      - counter-database                       # Ensure the database service is started before PgAdmin
+    networks:
+      - counter-app                           # Connect to the 'counter-app' network
+
+  # Backend service configuration
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile.backend
+    image: ${GIT_BACKEND_URI}
+    environment:
+      npm_config_cache: ${npm_config_cache}        # Path for npm cache directory
+      NODE_ENV: ${NODE_ENV}                        # Environment mode for the backend application (e.g., production)
+      DB_USER: ${POSTGRES_USER}                    # Username for accessing the PostgreSQL database
+      DB_PASSWORD: ${POSTGRES_PASSWORD}            # Password for the PostgreSQL database user
+      DB_NAME: ${POSTGRES_DB}                      # Name of the PostgreSQL database
+      DB_HOST: ${DB_HOST}                         # Hostname of the PostgreSQL database container
+    ports:
+      - "8080:8080"                              # Expose backend service on port 8080
+    depends_on:
+      - counter-database                         # Ensure the database service is started before the backend
+    networks:
+      - counter-app                              # Connect to the 'counter-app' network
+
+  # Frontend service configuration
+  frontend:
+    build:
+      context: ..
+      dockerfile: Dockerfile.frontend
+    image: ${GIT_FRONTEND_URI}
+    environment:
+      npm_config_cache: ${npm_config_cache}        # Path for npm cache directory
+      NODE_ENV: ${NODE_ENV}                        # Environment mode for the frontend application
+      BACKEND_URL: ${BACKEND_URL}                  # URL of the backend service that the frontend will connect to
+    ports:
+      - "3000:3000"                              # Expose frontend service on port 3000
+    networks:
+      - counter-app                              # Connect to the 'counter-app' network
+
+# Network configuration
+networks:
+  counter-app:
+    driver: bridge  # Use the bridge driver for network isolation
+
+# Volume configuration for persistent data
+volumes:
+  counter-database-data:   # Volume for PostgreSQL data storage
+  counter-pgadmin-data:    # Volume for PgAdmin data storage

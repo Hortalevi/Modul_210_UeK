@@ -1,0 +1,8 @@
+services:
+  webseite:
+    image: nginx
+    container_name: meine-html-webseite
+    ports:
+      - "9090:80"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro

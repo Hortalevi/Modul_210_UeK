@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: counter-frontend
+  labels:
+    app: counter-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: counter-frontend
+  template:
+    metadata:
+      labels:
+        app: counter-frontend
+    spec:
+      containers:
+        - name: counter-frontend
+          image: ghcr.io/hortalevi/counter-frontend:v1
+          ports:
+            - containerPort: 3000
+          env:
+            - name: npm_config_cache
+              value: ./.npm-cache
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: BACKEND_URL
+              value: "https://counter-backend-264574-levago.apps.exoscale-ch-gva-2-0.appuio.cloud"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: counter-frontend
+  labels:
+    app: counter-frontend
+spec:
+  selector:
+    app: counter-frontend
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: counter-frontend
+  labels:
+    name: counter-frontend
+spec:
+  to:
+    kind: Service
+    name: counter-frontend
+  port:
+    targetPort: 3000
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
